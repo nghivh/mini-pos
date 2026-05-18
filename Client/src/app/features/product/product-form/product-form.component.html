@@ -1,0 +1,24 @@
+<form [formGroup]="productForm" class="flex flex-col gap-3">
+    <app-input label="Mã Sản phẩm" formControlName="id"></app-input>
+
+    <app-input label="Tên Sản phẩm" formControlName="productName"></app-input>
+
+    <app-input label="Mã vạch" formControlName="barcode"></app-input>
+
+    <app-select-search label="Danh mục" formControlName="categoryId" [options]="categoryOptions()"></app-select-search>
+
+    <div class="flex flex-row justify-between">
+        <app-input type="number" label="Giá gốc" formControlName="costPrice"></app-input>
+
+        <app-input type="number" label="Giá bán" formControlName="price"></app-input>
+    </div>
+
+    <app-input type="number" label="Tồn kho" formControlName="stockQuantity"></app-input>
+
+    <div class="flex flex-row justify-end gap-3">
+        <app-button variant="primary" [disabled]="productForm.invalid || loading()" (click)="onSubmit()">
+            {{loading() ? 'Saving...' : (initialData() ? 'Update' : 'Create')}}
+        </app-button>
+        <app-button variant="outline" [disabled]="loading()" (click)="onCancel()">Cancel</app-button>
+    </div>
+</form>

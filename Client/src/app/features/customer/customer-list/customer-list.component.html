@@ -1,0 +1,35 @@
+<div class="flex flex-col h-full bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+    <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+        <h1 class="text-xl font-bold text-gray-900 tracking-tight">Quản lý Khách hàng</h1>
+        <app-button variant="primary" (click)="onCreate()">+ Add New</app-button>
+    </div>
+
+    <div class="flex-1 p-0 overflow-hidden relative">
+        <app-table [data]="filteredCustomers()" [columns]="columns()" [exportable]="true"
+            [searchable]="true" (search)="onSearch($event)"
+            [pagination]="true" [page]="currentPage()" [pageSize]="50"
+            [selectable]="true" [(selection)]="selectedCustomers">
+        </app-table>
+    </div>
+</div>
+
+<ng-template #actionTemplate let-customer>
+    <div class="flex gap-2" (click)="$event.stopPropagation()">
+        <app-button variant="primary" (click)="onEdit(customer)">Edit</app-button>
+        <app-button variant="danger" (click)="onDelete(customer)">Delete</app-button>
+    </div>
+</ng-template>
+
+<app-modal 
+    [isOpen]="isOpenModal()"
+    [title]="selectedCustomer() ? 'Cập nhật Khách hàng' : 'Thêm mới Khách hàng'"
+    size="lg"
+    (close)="onCloseModal()"
+    >
+    <app-customer-form
+        [initialData]="selectedCustomer()"
+        (save)="onHandleSave($event)"
+        (cancel)="onCloseModal()">
+
+    </app-customer-form>
+</app-modal>

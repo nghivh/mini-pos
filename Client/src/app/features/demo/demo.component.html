@@ -1,0 +1,52 @@
+<div class="p-6 max-w-4xl mx-auto">
+  <h2 class="text-2xl font-bold mb-6 text-gray-800">UI Components Demo</h2>
+
+  <div class="flex gap-4 mb-8">
+    <app-button variant="primary" [loading]="isPrimaryLoading" (click)="onPrimaryClick()">
+      Primary Action
+    </app-button>
+    <app-button variant="outline">Outline</app-button>
+    <app-button variant="danger" [loading]="true">Deleting...</app-button>
+    <app-button variant="ghost" [fullWidth]="false">Ghost Button</app-button>
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+    <app-input label="Full Name" placeholder="Enter your Full Name"></app-input>
+
+    <app-select label="Role (Native Select)"
+      [options]="[{label: 'Admin', value: 'admin'}, {label: 'User', value: 'user'}]">
+    </app-select>
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+
+    <app-select-search label="Country (Virtual Scroll - 1000 items)" placeholder="Select a country..."
+      [options]="countries">
+    </app-select-search>
+
+    <app-select-search label="Assign User (Async Search)" placeholder="Search user by name..."
+      [searchFn]="searchUsersFn" [optionTemplate]="userTemplate" [minChars]="1">
+    </app-select-search>
+
+    <ng-template #userTemplate let-opt>
+      <div class="flex items-center gap-3 py-1">
+        <img [src]="opt.value.avatar" class="w-8 h-8 rounded-full border border-gray-200" alt="">
+        <div class="flex flex-col">
+          <span class="font-medium text-gray-900 leading-tight">{{ opt.label }}</span>
+          <span class="text-xs text-gray-500">{{ opt.value.email }}</span>
+        </div>
+      </div>
+    </ng-template>
+
+  </div>
+
+  <div class="flex items-center gap-6 p-4 bg-gray-50 rounded-lg border border-gray-100">
+    <app-checkbox>I agree to terms</app-checkbox>
+
+    <div class="flex gap-2">
+      <app-badge variant="success">Active</app-badge>
+      <app-badge variant="warning">Pending</app-badge>
+      <app-badge variant="purple">New</app-badge>
+    </div>
+  </div>  
+</div>

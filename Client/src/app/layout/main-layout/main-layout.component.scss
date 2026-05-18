@@ -1,0 +1,19 @@
+/* Tất cả style đã được xử lý bởi Tailwind Classes.
+  File này chỉ dùng để custom những thứ phức tạp hoặc animation đặc biệt.
+*/
+
+/* Ví dụ animation đơn giản cho Dropdown */
+.animate-fade-in-down {
+  animation: fadeInDown 0.2s ease-out;
+}
+
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

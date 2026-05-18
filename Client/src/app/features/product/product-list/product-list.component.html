@@ -1,0 +1,44 @@
+<div class="flex flex-col h-full bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+    <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+        <h1 class="text-xl font-bold text-gray-900 tracking-tight">Quản lý Sản phẩm</h1>
+        <div class="flex flex-row gap-3">
+            <app-button variant="primary" (click)="onCreate()">+ Add New</app-button>
+            <app-button variant="outline" (click)="onExportAllProducts()">
+                <svg class="w-4 h-4 mr-2 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                Export All</app-button>
+        </div>
+    </div>
+
+    <div class="flex-1 p-0 overflow-hidden relative">
+        <app-table [data]="products()" [columns]="columns()" [loading]="isLoading()" [pagination]="true"
+            [serverSide]="true" [totalRecords]="totalCount()" [page]="query().page" [pageSize]="query().pageSize"
+            [searchable]="true" [exportable]="true" fileName="Danh_Sach_San_Pham" (pageChange)="onPageChange($event)"
+            (search)="onSearch($event)" (sortChange)="onSortChange($event)">
+        </app-table>
+    </div>
+
+</div>
+
+<ng-template #actionTemplate let-product>
+    <div class="flex gap-2" (click)="$event.stopPropagation()">
+        <app-button variant="primary" (click)="onEdit(product)">Edit</app-button>
+        <app-button variant="danger" (click)="onDelete(product)">Delete</app-button>
+    </div>
+</ng-template>
+
+<app-modal
+    [isOpen]="showModal()"
+    [title]="selectedProduct() ? 'Cập nhật Sản phẩm' : 'Thêm mới Sản phẩm'"
+    size="lg"
+    (close)="onCloseModal()">
+    <app-product-form 
+        [categories]="categories()"
+        [initialData]="selectedProduct()"
+        [loading]="isLoading()"
+        (save)="onHandleSave($event)"
+        (cancel)="onCloseModal()">
+    </app-product-form>
+</app-modal>
