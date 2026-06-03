@@ -23,7 +23,8 @@ export const routes: Routes = [
             { path: 'user', loadComponent: () => import('./features/user/user-list/user-list.component').then(m => m.UserListComponent) },
             { path: 'customer', loadComponent: () => import('./features/customer/customer-list/customer-list.component').then(m => m.CustomerListComponent)},
             { path: 'category', loadComponent: () => import('./features/category/category-list/category-list.component').then(m => m.CategoryListComponent)},
-            { path: 'product', loadComponent: () => import('./features/product/product-list/product-list.component').then(m => m.ProductListComponent)}
+            { path: 'product', loadComponent: () => import('./features/product/product-list/product-list.component').then(m => m.ProductListComponent)},
+            { path: 'order', loadComponent: () => import('./features/order/order-create/order-create.component').then(m => m.OrderCreateComponent) }
         ]
     },        
 

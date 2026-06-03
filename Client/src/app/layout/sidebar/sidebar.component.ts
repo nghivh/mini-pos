@@ -28,7 +28,8 @@ export class SidebarComponent {
     { label: 'User',  icon: '👥', link: '/user'},
     { label: 'Customer',  icon: '👥', link: '/customer'},
     { label: 'Category',  icon: '🗂️', link: '/category'},
-    { label: 'Product',   icon: '📦', link: '/product'}
+    { label: 'Product',   icon: '📦', link: '/product'},
+    { label: 'Order',   icon: '🛒', link: '/order'},
     // {
     //   label: 'Warehouse In', 
     //   icon: '🏭',

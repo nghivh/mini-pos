@@ -23,7 +23,7 @@ export interface ProductUpsert{
 
 export interface ProductQueryRequest{
     search?: string;
-    categoryId?: number;
+    categoryId?: number | null;
     minPrice?: number;
     maxPrice?: number;
     sortBy?: string;

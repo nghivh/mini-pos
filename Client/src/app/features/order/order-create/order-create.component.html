@@ -1,0 +1,254 @@
+<div id="pos-ui-section" class="flex h-[calc(100vh-64px)] overflow-hidden bg-[#F8FAFC] print:hidden">
+
+    <div class="flex-1 flex flex-col p-4 overflow-hidden">
+        <div class="flex gap-4 mb-4">
+            <div class="relative flex-1">
+                <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">🔍</span>
+                <input type="text" (input)="onSearch($event)" placeholder="Tìm tên sản phẩm hoặc quét mã vạch..."
+                    class="w-full pl-12 pr-4 py-3 bg-white border-none rounded-2xl shadow-sm focus:ring-2 focus:ring-blue-400 transition-all">
+            </div>
+
+            <div class="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+                <button (click)="filterByCategory(null)" [class.bg-blue-600]="selectedCategoryId() === null"
+                    [class.text-white]="selectedCategoryId() === null"
+                    class="px-5 py-3 rounded-2xl bg-blue-50 shadow-sm text-sm font-semibold whitespace-nowrap transition-all in-hover:cursor-pointer">
+                    Tất cả
+                </button>
+                <button *ngFor="let cat of categories()" (click)="filterByCategory(cat.id)"
+                    [class.bg-blue-600]="selectedCategoryId() === cat.id"
+                    [class.text-white]="selectedCategoryId() === cat.id"
+                    class="px-5 py-3 rounded-2xl bg-blue-50 shadow-sm text-sm font-semibold whitespace-nowrap transition-all in-hover:cursor-pointer">
+                    {{cat.name}}
+                </button>
+            </div>
+        </div>
+
+        <div class="flex-1 overflow-y-auto no-scrollbar pr-2">
+            <div *ngIf="isLoading()"
+                class="absolute inset-0 flex flex-col items-center justify-center bg-[#F8FAFC]/80 z-10">
+                <div class="w-10 h-10 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mb-3"></div>
+                <p class="text-slate-500 font-medium animate-pulse">Đang tải dữ liệu...</p>
+            </div>
+
+            <div *ngIf="!isLoading() && products().length === 0"
+                class="h-full flex flex-col items-center justify-center text-slate-400">
+                <span class="text-6xl mb-4 grayscale opacity-50">📭</span>
+                <h3 class="text-lg font-bold text-slate-600 mb-1">Không tìm thấy sản phẩm</h3>
+                <p class="text-sm">Vui lòng thử từ khóa khác hoặc quét lại mã vạch.</p>
+                <button (click)="searchQuery.set(''); loadProducts()"
+                    class="mt-4 px-4 py-2 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 text-blue-600 font-semibold transition-all">
+                    Xóa tìm kiếm
+                </button>
+            </div>
+
+            <div class="flex-1 grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4">
+                <div *ngFor="let p of products()" (click)="cart.addToCart(p)"
+                    class="bg-white p-3 rounded-3xl shadow-sm border border-transparent hover:border-blue-400 hover:shadow-md cursor-pointer transition-all group relative overflow-hidden">
+
+                    <div
+                        class="aspect-square bg-slate-50 rounded-2xl mb-3 flex items-center justify-center group-hover:scale-105 transition-transform">
+                        <span class="text-4xl">📦</span>
+                    </div>
+
+                    <h3 class="text-sm font-bold text-slate-800 line-clamp-2 h-10">{{p.productName}}</h3>
+                    <div class="flex justify-between items-center mt-2">
+                        <span class="text-blue-600 font-extrabold">{{p.price | number}}đ</span>
+                        <span class="text-[10px] px-2 py-1 bg-slate-100 rounded-lg font-bold text-slate-500">Tồn:
+                            {{p.stockQuantity}}</span>
+                    </div>
+
+                    <div
+                        class="absolute top-2 right-2 w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-[10px] font-bold opacity-0 group-active:opacity-100 transition-opacity">
+                        +1
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="w-[400px] bg-white border-l border-slate-100 flex flex-col shadow-2xl">
+        <div class="p-6 border-b border-slate-50 flex justify-between items-center">
+            <h2 class="text-xl font-black text-slate-800">Đơn hàng hiện tại</h2>
+            <button (click)="cart.clearCart()" class="text-gray-400 hover:text-red-500 transition-colors">
+                <small>Xóa trắng</small>
+            </button>
+        </div>
+
+        <div class="px-6 py-3 bg-white border-b border-slate-100 relative z-20 shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
+            <div *ngIf="selectedCustomer()"
+                class="flex justify-between items-center bg-blue-50/50 p-2.5 rounded-2xl border border-blue-100 transition-all">
+                <div class="flex items-center gap-3">
+                    <div
+                        class="w-9 h-9 bg-blue-600 text-white rounded-xl flex items-center justify-center font-bold text-sm shadow-sm shadow-blue-200">
+                        {{ selectedCustomer()?.fullName | slice:0:1 }}
+                    </div>
+                    <div>
+                        <p class="text-sm font-bold text-slate-800 leading-none mb-1">{{ selectedCustomer()?.fullName }}
+                        </p>
+                        <p class="text-xs text-blue-600 font-semibold">{{ selectedCustomer()?.phoneNumber }}</p>
+                    </div>
+                </div>
+                <button (click)="removeCustomer()"
+                    class="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-white rounded-lg transition-all"
+                    title="Hủy chọn">
+                    ✕
+                </button>
+            </div>
+
+            <div *ngIf="!selectedCustomer()" class="relative group">
+                <span
+                    class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors">👤</span>
+                <input type="text" (input)="onSearchCustomer($event)" placeholder="Tìm SĐT hoặc Tên khách..."
+                    class="w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-100 rounded-2xl focus:bg-white focus:border-blue-400 focus:ring-4 focus:ring-blue-50 outline-none text-sm font-medium transition-all text-slate-700">
+
+                <div *ngIf="customerSearchResults().length > 0"
+                    class="absolute top-[calc(100%+8px)] left-0 right-0 bg-white border border-slate-100 rounded-2xl shadow-xl overflow-hidden z-50">
+                    <div class="max-h-[200px] overflow-y-auto no-scrollbar">
+                        <div *ngFor="let c of customerSearchResults()" (click)="selectCustomer(c)"
+                            class="p-3 hover:bg-slate-50 cursor-pointer border-b border-slate-50 last:border-0 flex justify-between items-center transition-colors">
+                            <span class="text-sm font-bold text-slate-800">{{ c.fullName }}</span>
+                            <span class="text-xs font-bold text-slate-500 bg-slate-100 px-2 py-1 rounded-md">{{
+                                c.phoneNumber
+                                }}</span>
+                        </div>
+                    </div>
+                    <div class="p-2 bg-slate-50 border-t border-slate-100">
+                        <button
+                            class="w-full py-2 text-xs text-blue-600 font-bold bg-white rounded-xl hover:bg-blue-600 hover:text-white transition-all shadow-sm border border-slate-200 hover:border-transparent"
+                            (click)="onCreateCustomer()">
+                            + Thêm khách hàng mới
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
+            <div *ngIf="cart.items().length === 0" class="h-full flex flex-col items-center justify-center opacity-30">
+                <span class="text-6xl mb-4">🛒</span>
+                <p class="font-medium">Giỏ hàng đang trống</p>
+            </div>
+
+            <div *ngFor="let item of cart.items()"
+                class="flex items-center gap-4 p-2 hover:bg-slate-50 rounded-2xl transition-colors">
+                <div class="w-12 h-12 bg-slate-100 rounded-xl flex items-center justify-center text-xl">📦</div>
+                <div class="flex-1">
+                    <h4 class="text-sm font-bold text-slate-800 line-clamp-1">{{item.productName}}</h4>
+                    <p class="text-xs text-blue-600 font-bold">{{item.price | number}}đ</p>
+                </div>
+                <div class="flex items-center gap-2 bg-white border border-slate-100 rounded-xl p-1 shadow-sm">
+                    <button (click)="cart.decreaseQuantity(item.productId)"
+                        class="w-7 h-7 hover:bg-slate-50 rounded-lg">-</button>
+                    <span class="w-5 text-center font-bold text-sm">{{item.quantity}}</span>
+                    <button (click)="cart.increaseQuantity(item.productId)"
+                        class="w-7 h-7 hover:bg-slate-50 rounded-lg">+</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="p-6 bg-slate-50/50 space-y-4">
+            <div class="flex justify-between text-slate-500 font-medium">
+                <span>Tạm tính</span>
+                <span>{{cart.totalAmount() | number}}đ</span>
+            </div>
+            <div class="flex justify-between items-center">
+                <span class="text-slate-500 font-medium">Chiết khấu</span>
+                <div class="flex items-center gap-2">
+                    <input type="number" [(ngModel)]="cart.discount"
+                        class="w-24 text-right bg-transparent border-b border-dashed border-slate-300 focus:border-blue-500 focus:ring-0 font-bold text-red-500 p-0">
+                    <span class="text-red-500 font-bold">đ</span>
+                </div>
+            </div>
+
+            <div class="pt-4 border-t border-slate-200">
+            <div class="flex gap-2 mb-4">
+                    <button (click)="paymentMethod.set('Cash')"
+                            [class.bg-blue-600]="paymentMethod() === 'Cash'"
+                            [class.text-white]="paymentMethod() === 'Cash'"
+                            class="flex-1 py-2 rounded-xl text-sm font-bold bg-slate-100 text-slate-500 hover:bg-slate-200 transition-all">
+                        💵 Tiền mặt
+                    </button>
+                    <button (click)="paymentMethod.set('Transfer')"
+                            [class.bg-blue-600]="paymentMethod() === 'Transfer'"
+                            [class.text-white]="paymentMethod() === 'Transfer'"
+                            class="flex-1 py-2 rounded-xl text-sm font-bold bg-slate-100 text-slate-500 hover:bg-slate-200 transition-all">
+                        🏦 Chuyển khoản
+                    </button>
+                </div>
+
+                <div *ngIf="qrCodeUrl()" class="mb-4 bg-white p-3 rounded-2xl border border-blue-100 shadow-sm flex flex-col items-center animate-fade-in">
+                    <p class="text-xs font-bold text-slate-500 mb-2 uppercase">Quét mã để thanh toán</p>
+                    <img [src]="qrCodeUrl()" alt="VietQR" class="w-48 h-48 object-contain rounded-xl">
+                    <p class="text-[10px] text-blue-600 mt-2 font-semibold">Tự động điền {{ cart.finalAmount() | number }}đ</p>
+                </div>
+
+                <div class="flex justify-between items-end mb-6">
+                    <span class="text-slate-800 font-black">THÀNH TIỀN</span>
+                    <span class="text-3xl font-black text-blue-600">{{cart.finalAmount() | number}}đ</span>
+                </div>
+
+                <button (click)="onCheckout()" [disabled]="cart.items().length === 0"
+                    class="w-full py-4 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white rounded-2xl font-black shadow-lg shadow-blue-200 transition-all active:scale-[0.98] in-hover:cursor-pointer">
+                    XÁC NHẬN THANH TOÁN (F12)
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="pos-print-section" class="print-area hidden text-black bg-white font-sans text-sm print:block">
+    <div class="text-center mb-4">
+        <h2 class="text-xl font-bold uppercase">MINI POS STORE</h2>
+        <p class="text-xs">Số 123, Đại lộ ABC, Bình Dương</p>
+        <p class="text-xs">SĐT: 0909.123.456</p>
+    </div>
+
+    <div class="text-center border-b border-black pb-2 mb-3">
+        <h3 class="text-lg font-bold">HÓA ĐƠN BÁN HÀNG</h3>
+        <p class="text-xs">Số: #{{ orderIdToPrint }}</p>
+        <p class="text-xs">Ngày: {{ printDate | date:'dd/MM/yyyy HH:mm' }}</p>
+    </div>
+
+    <table class="w-full text-xs mb-3">
+        <thead>
+            <tr class="border-b border-black">
+                <th class="text-left py-1">Tên món</th>
+                <th class="text-center py-1">SL</th>
+                <th class="text-right py-1">T.Tiền</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr *ngFor="let item of printedCartItems" class="border-b border-dashed border-gray-300">
+                <td class="py-1 pr-1">{{ item.productName }}</td>
+                <td class="text-center py-1">{{ item.quantity }}</td>
+                <td class="text-right py-1">{{ (item.quantity * item.price) | number }}</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="text-sm space-y-1 border-b border-black pb-3 mb-3">
+        <div class="flex justify-between">
+            <span>Tổng tiền:</span>
+            <span>{{ printedTotalAmount | number }}đ</span>
+        </div>
+        <div *ngIf="printedDiscount > 0" class="flex justify-between">
+            <span>Chiết khấu:</span>
+            <span>-{{ printedDiscount | number }}đ</span>
+        </div>
+        <div class="flex justify-between font-bold text-base mt-2">
+            <span>THÀNH TIỀN:</span>
+            <span>{{ printedFinalAmount | number }}đ</span>
+        </div>
+    </div>
+
+    <div class="text-center text-xs">
+        <p>Cảm ơn quý khách và hẹn gặp lại!</p>
+        <p class="text-[10px] mt-1 italic">Powered by XYZ POS</p>
+    </div>
+</div>
+
+<app-modal [isOpen]="isOpenModalCustomer()" [title]="'Thêm mới Khách hàng'" (close)="onCloseModalCustomer()">
+    <app-customer-form [initialData]="selectedCustomer()" (save)="onHandleSaveCustomer($event)"
+        (cancel)="onCloseModalCustomer()">
+    </app-customer-form>
+</app-modal>

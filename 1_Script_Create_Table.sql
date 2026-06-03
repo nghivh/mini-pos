@@ -37,6 +37,7 @@ CREATE TABLE Orders (
     DiscountAmount DECIMAL(18, 2) DEFAULT 0,
     FinalAmount DECIMAL(18, 2) NOT NULL, -- Số tiền thực thu
     PaymentMethod NVARCHAR(50), -- Cash, Momo, BankTransfer
+	Status INT DEFAULT 1, -- 1: Hoàn thành, 0: Đã hủy
     Notes NVARCHAR(500),
     CONSTRAINT FK_Order_Customer FOREIGN KEY (CustomerId) REFERENCES Customers(Id)
 );

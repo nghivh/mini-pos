@@ -25,6 +25,10 @@ namespace API.Models.Entities
         [MaxLength(50)]
         public string? PaymentMethod { get; set; }
 
+        public int Status { get; set; }
+
+        public string? Notes { get; set; }
+
         [ForeignKey("CustomerId")]
         public virtual Customer? Customer { get; set; }
     }

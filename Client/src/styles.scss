@@ -1,125 +1,66 @@
+/* =========================================
+   1. KHAI BÁO TAILWIND CSS
+========================================= */
+// @tailwind base;
+// @tailwind components;
+// @tailwind utilities;
+//@import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;600;700;800&display=swap');
 
-// Include theming for Angular Material with `mat.theme()`.
-// This Sass mixin will define CSS variables that are used for styling Angular Material
-// components according to the Material 3 design spec.
-// Learn more about theming and how to use it for your application's
-// custom components at https://material.angular.dev/guide/theming
-@use '@angular/material' as mat;
-
-html {
-  @include mat.theme((
-    color: (
-      primary: mat.$cyan-palette,
-      tertiary: mat.$orange-palette,
-    ),
-    typography: Roboto,
-    density: 0,
-  ));
-}
-
-body {
-  // Default the application to a light color theme. This can be changed to
-  // `dark` to enable the dark color theme, or to `light dark` to defer to the
-  // user's system settings.
-  color-scheme: light;
-
-  // Set a default background, font and text colors for the application using
-  // Angular Material's system-level CSS variables. Learn more about these
-  // variables at https://material.angular.dev/guide/system-variables
-  background-color: var(--mat-sys-surface);
-  color: var(--mat-sys-on-surface);
-  font: var(--mat-sys-body-medium);
-
-  // Reset the user agent margin.
-  margin: 0;
-}
-
-/* You can add global styles to this file, and also import other style files */
-
-html, body { height: 100%; }
-body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
-
-/* ================================
-   Angular Material Theme (M3)
-================================ */
-/*
-@use '@angular/material' as mat;
-
-$theme: mat.define-theme((
-  color: (
-    theme-type: light,
-    primary: mat.$cyan-palette,
-  ),
-  typography: (
-    brand-family: "Roboto",
-    plain-family: "Roboto",
-  )
-));
-
-@include mat.all-component-themes($theme);
-*/
-
-/* Global */
-/*
+/* =========================================
+   2. THIẾT LẬP CƠ BẢN (APP RESET)
+========================================= */
 html, body {
-  margin: 0;
   height: 100%;
-  font-family: Roboto, sans-serif;
+  margin: 0;
+  padding: 0;
+
+  //font-family: 'Be Vietnam Pro', sans-serif;
+  font-family: 'Roboto', sans-serif;
+  
+  /* Thiết lập nền và màu chữ mặc định cho toàn app (giống theme POS của bạn) */
+  background-color: #F8FAFC; /* Nền xám nhạt (slate-50) */
+  color: #1e293b;            /* Chữ xám đậm (slate-800) */
+  
+  /* Giao diện thanh cuộn mặc định của trình duyệt */
+  color-scheme: light;
 }
 
-.mat-mdc-form-field {
-  all: revert-layer;
+/* Tùy chỉnh thanh cuộn cho toàn ứng dụng mượt mà hơn (Tùy chọn) */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
 }
-*/
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1; /* slate-300 */
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8; /* slate-400 */
+}
 
-/* ==========================================================================
-   CẤU HÌNH MÁY IN TEM NHÃN
-   ========================================================================== */
+/* =========================================
+   3. TIỆN ÍCH CHUNG (GLOBAL UTILITIES)
+========================================= */
+/* Xóa mũi tên tăng giảm mặc định của input type="number" */
+input[type=number]::-webkit-inner-spin-button, 
+input[type=number]::-webkit-outer-spin-button { 
+  -webkit-appearance: none; 
+  margin: 0; 
+}
+
+/* =========================================
+   4. CẤU HÌNH IN HÓA ĐƠN K80
+========================================= */
 @media print {
-  /* 1. Giấu toàn bộ App (thường là thẻ <app-root>) đi, TRỪ khu vực in */
-  body > *:not(#print-area) {
-    display: none !important;
+  html, body, app-root {
+    height: auto !important;
+    overflow: visible !important;
+    background-color: white !important;
   }
-
-  /* 2. Đảm bảo khu vực in hiển thị rõ ràng */
-  #print-area {
-    display: block !important;
-  }
-
-  /* 3. Cấu hình khổ giấy tem nhiệt (Ví dụ 100mm x 50mm) */
+  
   @page {
-    size: 40mm 76mm; /* Khổ giấy vật lý MỚI: Rộng 40mm, Cao 76mm */
     margin: 0;
+    size: 80mm auto; 
   }
-  
-  .page-break-after {
-    page-break-after: always;
-  }
-}
-
-.print-page-wrapper {
-  width: 40mm;
-  height: 76mm;
-  position: relative;
-  overflow: hidden;
-  page-break-after: always;
-}
-
-.print-page-wrapper:last-child {
-  page-break-after: auto;
-  break-after: auto;
-}
-
-.print-content-rotated {
-  /* Bóp nhỏ lại để tạo lề an toàn */
-  width: 72mm; 
-  height: 38mm; 
-  position: absolute;
-  
-  /* Cập nhật tọa độ xoay cho kích thước mới */
-  top: 19mm;
-  left: -16mm;
-  
-  transform: rotate(-90deg);
-  transform-origin: center;
 }

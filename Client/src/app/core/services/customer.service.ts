@@ -17,7 +17,7 @@ export class CustomerService {
     return this.api.get(`/customers/${phoneNumber}`);
   }
 
-  createCustomer(data: Customer){
+  createCustomer(data: Customer) : Observable<Customer>{
     return this.api.post('/customers', data);
   }
 
