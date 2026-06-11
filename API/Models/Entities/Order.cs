@@ -31,5 +31,7 @@ namespace API.Models.Entities
 
         [ForeignKey("CustomerId")]
         public virtual Customer? Customer { get; set; }
+
+        public virtual ICollection<OrderDetail> OrderDetails { get; set; } = new List<OrderDetail>();
     }
 }

@@ -27,7 +27,7 @@ namespace API.Services.Implementations
                 // 2. Chèn dữ liệu vào bảng Orders
                 var insertOrder = new Order
                 {
-                    OrderDate = DateTime.UtcNow,
+                    OrderDate = DateTime.Now,
                     CustomerId = request.CustomerId,
                     TotalAmount = totalAmount,
                     DiscountAmount = request.DiscountAmount,
