@@ -1,12 +1,15 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿#if DEBUG
+
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Data.SqlClient;
 using System.ComponentModel.DataAnnotations;
 
 namespace API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [AllowAnonymous] // Cho phép truy cập mà không cần xác thực
+
     public class TestExceptionController : ControllerBase
     {
         [HttpGet("null-reference")]
@@ -48,3 +51,5 @@ namespace API.Controllers
         }
     }
 }
+
+#endif

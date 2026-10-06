@@ -2,6 +2,8 @@
 using API.Common.Security;
 using API.Data.Interfaces;
 using API.Models.DTOs.Auth;
+using API.Models.Entities;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using System.Security.Claims;
 using System.Security.Cryptography;
@@ -29,17 +31,36 @@ namespace API.Application.Services
         // --------------------------------------------------------------------
         public async Task<AuthResponse> LoginAsync(string username, string password, string? device, string ip, CancellationToken ct)
         {
-            // 1️. Lấy user + roles
-            /*
-            string encodedPassword = ComputeHash(password);
-            */
+            // 1. Tìm User trong Database theo Username
+            var user = await _unitOfWork.Repository<User>().Query().FirstOrDefaultAsync(u => u.UserName == username, ct);
+            if (user == null)
+            {
+                throw new UnauthorizedAccessException("Sai tên đăng nhập hoặc mật khẩu");
+            }
+
+            if(!user.IsActive)
+            {
+                throw new UnauthorizedAccessException("Tài khoản đã bị khóa");
+            }
+
+            // 2. Kiểm tra mật khẩu bằng BCrypt
+            // BCrypt.Verify sẽ tự động so sánh mật khẩu thô với chuỗi Hash trong DB
+            bool isPasswordValid = BCrypt.Net.BCrypt.Verify(password, user.PasswordHash);
+            if (!isPasswordValid)
+            {
+                throw new UnauthorizedAccessException("Sai tên đăng nhập hoặc mật khẩu");
+            }
+
+            string[] roleNames = [user.Role];
 
             //For test mini app
+            /*
             if (username != "admin" || password != "123456")
             {
                 throw new UnauthorizedAccessException("User hoặc mật khẩu không đúng");
             }
             string[] roleNames = ["admin"];
+            */
             //For test mini app
 
             // 3️. Tạo Access Token
@@ -112,36 +133,19 @@ namespace API.Application.Services
 
         public async Task<CurrentUser?> CurrentUserAsync(string username)
         {
-            //For test mini app
-            if(username == "admin")
-            {
-                return new CurrentUser
-                {
-                    Username = username,
-                    Fullname = "Admin",
-                    Section = "Admin",
-                    Roles = []
-                };
-            }
+            var user = await _unitOfWork.Repository<User>().Query().FirstOrDefaultAsync(u => u.UserName == username);
 
-            var param = new
-            {
-                EmpCode = username
-            };
-
-            var currentUser = await _unitOfWork.Dapper.ExecStoredProcToDataTableAsync("APPDB.dbo.p_sys_get_user_info", param);
-
-            if(currentUser is null || currentUser.Rows.Count <= 0)
+            if (user is null)
             {
                 return null;
             }
 
             return new CurrentUser
             {
-                Username = username,
-                Fullname = currentUser.Rows[0]["FullName"].ToString()!,
-                Section = currentUser.Rows[0]["SectionCode"].ToString()!,
-                Roles = []
+                Username = user.UserName,
+                Fullname = user.FullName,
+                Section = "",
+                Roles = [user.Role]
             };
         }
 

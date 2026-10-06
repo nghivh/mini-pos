@@ -1,7 +1,8 @@
 import { CommonModule } from '@angular/common';
-import { Component, effect, EventEmitter, inject, input, Input, OnChanges, output, Output, SimpleChanges } from '@angular/core';
-import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { User } from '@core/models/user.model';
+import { Component, effect, EventEmitter, inject, input, Input, OnChanges, output, Output, signal, SimpleChanges } from '@angular/core';
+import { FormBuilder, FormGroup, ReactiveFormsModule, Validators, FormsModule } from '@angular/forms';
+import { DropDownListDto } from '@core/models/dropdownlist.model';
+import { User, UserDto } from '@core/models/user.model';
 import { ButtonComponent } from '@shared/ui/button/button.component';
 import { CheckboxComponent } from '@shared/ui/checkbox/checkbox.component';
 import { InputComponent } from '@shared/ui/input/input.component';
@@ -11,71 +12,100 @@ import { SelectSearchComponent } from '@shared/ui/select-search/select-search.co
   selector: 'app-user-form',
   imports: [
     CommonModule, ReactiveFormsModule,
-    InputComponent, ButtonComponent, SelectSearchComponent, CheckboxComponent
-  ],
+    InputComponent, ButtonComponent, SelectSearchComponent, CheckboxComponent,
+    FormsModule
+],
   templateUrl: './user-form.component.html',
   styleUrl: './user-form.component.scss',
 })
 export class UserFormComponent {
-  // --- 1. SIGNAL INPUTS (Thay thế @Input())---
-  initialData = input<User | null>(null);
-  loading = input<boolean>(false);
+  // Signal
+  fb = inject(FormBuilder);
+  isEditMode = signal(false);
+  loading = signal(false);
+  
+  // Input
+  initialData = input<UserDto | null>(null);
 
-  // --- 2. SIGNAL OUTPUTS (Thay thế @Output() + EventEmitter)---
+  // Output
   save = output<any>();
   cancel = output<void>();
 
-  form;
-
-  roleOptions = [
-    {label: 'Administrator', value: 'Admin'},
-    {label: 'Editor', value: 'Editor'},
-    {label: 'Viewer', value: 'Viewer'}
-  ]
-
-  fb = inject(FormBuilder);
+  userForm: FormGroup = this.fb.group({
+    id: [0],
+    userName: ['', Validators.required],
+    fullName: ['', Validators.required],
+    password: ['', [Validators.required, Validators.minLength(6)]],
+    role: ['', Validators.required]
+  })
 
   constructor(){
-    // Khởi tạo Form rỗng ngay lập tức
-    this.form = this.fb.group({
-      name: ['', Validators.required],
-      email: ['', [Validators.required, Validators.email]],
-      role: [null as string | null, Validators.required],
-      status: [true]
-    })
-
-    // --- 3. REPLACEMENT FOR NG_ON_CHANGES ---
-    // effect() tự động chạy mỗi khi signal 'initialData' thay đổi
     effect(() => {
-      // Đọc giá trị signal (Dependency tracking)
+      // Đọc giá trị từ signal
       const user = this.initialData();
+      const passwordControl = this.userForm.get('password');
 
       if(user){
-        // === EDIT MODE ===
-        this.form.patchValue({
-          name: user.name,
-          email: user.email,
-          role: user.role,
-          status: user.status === 'Active'
-        });
-        this.form.get('email')?.disable();
+        // Edit mode
+        this.isEditMode.set(true);
+        this.userForm.patchValue({
+          id: user.id,
+          userName: user.userName,
+          fullName: user.fullName,
+          password: '', 
+          role: user.role
+        })
+
+        // Enable/disable fields
+        this.userForm.get('id')?.disable();   
+        this.userForm.get('userName')?.disable(); 
+        
+        // password KHÔNG bắt buộc khi edit — để trống = giữ nguyên mật khẩu cũ
+        passwordControl?.clearValidators();
+        passwordControl?.setValidators([Validators.minLength(6)]);
       }
       else{
-        // === CREATE MODE ===
-        this.form.reset({ status: true});
-        this.form.get('email')?.enable();
-      }
-    });
-  }  
+        // Insert mode
+        this.isEditMode.set(false);
+        this.userForm.reset({
+          id: 0,
+          userName: '',
+          fullName: '',
+          role: ''
+        })
 
-  onSubmit(){
-    if(this.form.invalid){
-      this.form.markAllAsTouched(); // Hiển thị đỏ tất cả lỗi cho user thấy
+        // Enable/disable fields
+        this.userForm.get('id')?.disable();
+
+        // password BẮT BUỘC khi tạo mới
+        passwordControl?.clearValidators();
+        passwordControl?.setValidators([Validators.required, Validators.minLength(6)]);
+      }
+
+      passwordControl?.updateValueAndValidity();
+    });  
+  }
+
+  roles: DropDownListDto[] = [
+    { value: 'Admin', label: 'Admin'},
+    { value: 'Cashier', label: 'Cashier'}
+  ]
+
+  onSave(){
+    if(this.userForm.invalid){
+      this.userForm.markAllAsTouched();
       return;
     }
-    // Lấy giá trị (kể cả field bị disable) và bắn ra ngoài
-    console.log('User-Form', this.form.getRawValue());
-    this.save.emit(this.form.getRawValue());
+
+    const raw = this.userForm.getRawValue();
+
+    // edit mà không đổi mật khẩu → không gửi field password lên API,
+    // tránh ghi đè mật khẩu cũ thành rỗng/hash-rỗng phía backend.
+    if(this.isEditMode() && !raw.password){
+      delete raw.password;
+    }
+
+    this.save.emit(raw);
   }
 
   onCancel(){

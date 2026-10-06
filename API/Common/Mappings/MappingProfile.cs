@@ -17,6 +17,10 @@ namespace API.Common.Mappings
             CreateMap<Product, ProductUpsertDto>().ReverseMap();
             CreateMap<Product, ProductResponseDto>()
                 .ForMember(dest => dest.CategoryName, opt => opt.MapFrom(src => src.Category.Name));
+
+            // User
+            CreateMap<User, UserDto>().ReverseMap();
+            CreateMap<User, UserUpsertDto>().ReverseMap();
         }
     }
 }

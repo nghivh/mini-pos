@@ -10,9 +10,14 @@ namespace API.Data.Interfaces
         IQueryable<T> Query(bool asNoTracking = true);
 
         /// <summary>
+        /// Tìm kiếm một bản ghi dựa trên khóa chính (Primary Key).
+        /// </summary>
+        Task<T?> GetByIdAsync(object key, CancellationToken cancellationToken = default);
+
+        /// <summary>
         /// Tìm kiếm một bản ghi dựa trên danh sách các khóa chính (Primary Keys).
         /// </summary>
-        Task<T?> GetByIdAsync(CancellationToken cancellationToken = default, params object[] keys);
+        Task<T?> GetByIdAsync(object[] keys, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Thêm mới một bản ghi vào Database.

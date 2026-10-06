@@ -1,5 +1,6 @@
 ﻿using API.Models.Entities;
 using API.Services.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -16,6 +17,7 @@ namespace API.Controllers
             _customerService = customerService;
         }
 
+        [Authorize]
         [HttpGet]
         public async Task<IActionResult> GetAll(CancellationToken ct)
         {

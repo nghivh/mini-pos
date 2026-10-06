@@ -2,12 +2,14 @@ import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { LayoutService } from '@core/services/layout.service';
+import { AuthService } from '@core/services/auth.service';
 
 // Định nghĩa cấu trúc 1 item trong menu
 export interface MenuItem {
   label: string;
   icon: string;
   link?: string;
+  roles?: string[];
   expanded?: boolean; // Biến để theo dõi menu cha đang mở hay đóng
   children?: MenuItem[]; // Danh sách menu con (nếu có)
 }
@@ -21,52 +23,29 @@ export interface MenuItem {
 })
 export class SidebarComponent {
   protected layout = inject(LayoutService);
+  private authService = inject(AuthService);
 
   // Mảng chứa cấu trúc Menu
-  menuItems: MenuItem[] = [
+  private allMenuItems: MenuItem[] = [
     { label: 'Dashboard', icon: '📊', link: '/' },
-    { label: 'User',  icon: '👥', link: '/user'},
+    { label: 'User',  icon: '👤', link: '/user', roles: ['Admin']},
     { label: 'Customer',  icon: '👥', link: '/customer'},
     { label: 'Category',  icon: '🗂️', link: '/category'},
     { label: 'Product',   icon: '📦', link: '/product'},
     { label: 'Order',   icon: '🛒', link: '/order'},
     // {
-    //   label: 'Warehouse In', 
+    //   label: 'Menu cấp cha', 
     //   icon: '🏭',
     //   expanded: false,
     //   children: [
-    //     { label: 'Pending List', icon: '📋', link: '/wh-ins' },
-    //     { label: 'Transfer WIP', icon: '🔄', link: '/wh-in-transfer-wip' },
-    //     { label: 'Print Label', icon: '🖨️', link: '/wh-in-print-label' },
-    //     { label: 'Pickup', icon: '🛒', link: '/wh-in-pickup' },
-    //     { label: 'Transfer', icon: '🔄', link: '/wh-in-transfer' },
-    //     { label: 'Storage', icon: '📥', link: '/wh-in-storage' },
-    //     { label: 'Report', icon: '📊', link: '/wh-in-report' }
-    //   ]
-    // },
-    // {
-    //   label: 'Purchasing', 
-    //   icon: '📦',
-    //   expanded: false,
-    //   children: [
-    //     { label: 'Purchaser', icon: '👤', link: '/purs' },
-    //     { label: 'Approval', icon: '🛂', link: '/purs-approval' }
-    //   ]
-    // },
-    // {
-    //   label: 'Warehouse Out', 
-    //   icon: '🏭',
-    //   expanded: false,
-    //   children: [
-    //     { label: 'Pending List', icon: '📋', link: '/wh-outs' },
-    //     { label: 'Print Label', icon: '🖨️', link: '/wh-out-print-label' },
-    //     { label: 'Pickup', icon: '🛒', link: '/wh-out-pickup' },
-    //     { label: 'Transfer', icon: '🔄', link: '/wh-out-transfer' },
-    //     { label: 'Packing', icon: '📦', link: '/wh-out-packing' },
-    //     { label: 'Report', icon: '📊', link: '/wh-out-report' }
+    //     { label: 'Menu cấp con', icon: '📋', link: '/sub-menu' },
     //   ]
     // }
   ];
+
+  menuItems: MenuItem[] = this.allMenuItems.filter(item =>
+    !item.roles || item.roles.some(role => this.authService.hasRole(role))
+  );
 
   // State quản lý Tooltip
   tooltip = signal<{ label: string; top: number; visible: boolean }>({

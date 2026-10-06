@@ -53,3 +53,14 @@ CREATE TABLE OrderDetails (
     CONSTRAINT FK_Detail_Order FOREIGN KEY (OrderId) REFERENCES Orders(Id),
     CONSTRAINT FK_Detail_Product FOREIGN KEY (ProductId) REFERENCES Products(Id)
 );
+
+-- 6. Users
+CREATE TABLE Users (
+    Id INT IDENTITY(1,1) PRIMARY KEY,
+    Username VARCHAR(50) NOT NULL UNIQUE,
+    FullName NVARCHAR(100) NOT NULL,
+    PasswordHash VARCHAR(255) NOT NULL,
+    Role VARCHAR(20) NOT NULL, -- 'Admin' hoặc 'Cashier'
+    IsActive BIT DEFAULT 1,
+    CreatedAt DATETIME DEFAULT GETDATE()
+);

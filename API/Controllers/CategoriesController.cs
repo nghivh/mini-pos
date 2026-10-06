@@ -17,9 +17,9 @@ namespace API.Controllers
         }
 
         [HttpGet]
-        public IActionResult Get()
+        public async Task<IActionResult> Get()
         {
-            var categories = _categoryService.GetAllCategoriesAsync(CancellationToken.None).Result;
+            var categories = await _categoryService.GetAllCategoriesAsync(CancellationToken.None);
             return Ok(categories);
         }
 

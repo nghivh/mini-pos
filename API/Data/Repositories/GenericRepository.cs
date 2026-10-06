@@ -20,7 +20,12 @@ namespace API.Data.Repositories
             return asNoTracking ? _dbSet.AsNoTracking() : _dbSet;
         }
 
-        public async Task<T?> GetByIdAsync(CancellationToken cancellationToken = default, params object[] keys)
+        public async Task<T?> GetByIdAsync(object key, CancellationToken cancellationToken = default)
+        {
+            return await _dbSet.FindAsync(key, cancellationToken).ConfigureAwait(false);
+        }
+
+        public async Task<T?> GetByIdAsync(object[] keys, CancellationToken cancellationToken = default)
         {
             return await _dbSet.FindAsync(keys, cancellationToken).ConfigureAwait(false);
         }
@@ -90,6 +95,6 @@ namespace API.Data.Repositories
         public Task<bool> ExistsAsync(Expression<Func<T, bool>> predicate, CancellationToken cancellationToken = default)
         {
             return _dbSet.AnyAsync(predicate, cancellationToken);
-        }
+        }        
     }
 }

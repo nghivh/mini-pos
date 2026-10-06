@@ -8,11 +8,11 @@ using API.Data.Interfaces;
 using API.Data.Repositories;
 using API.Services.Implementations;
 using API.Services.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
-
 // Add services to the container.
 
 // --------------------------------------------------------------------
@@ -48,6 +48,7 @@ builder.Services.AddScoped<ICategoryService, CategoryService>();
 builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<IOrderService, OrderService>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
+builder.Services.AddScoped<IUserService, UserService>();
 
 // --------------------------------------------------------------------
 // AUTOMAPPER, CONTROLLERS, MIDDLEWARE
@@ -92,31 +93,48 @@ builder.Services.AddSwaggerGen(c =>
 
 // Jwt Configuration
 builder.Services.AddJwtAuthentication(builder.Configuration);
+builder.Services.AddAuthorization(options => {     
+    options.FallbackPolicy = new AuthorizationPolicyBuilder()
+        .RequireAuthenticatedUser()
+        .Build();
+});
 
 var app = builder.Build();
 
 // --------------------------------------------------------------------
 // MIDDLEWARE PIPELINE
 // --------------------------------------------------------------------
+app.UseMiddleware<ExceptionMiddleware>();
+
+/*
+app.Use(async (context, next) =>
+{
+    Console.WriteLine("--------------------------------------------------------------------");
+    Console.WriteLine($"-> {context.Request.Method} {context.Request.Path}");
+
+    await next(context);
+
+    Console.WriteLine($"<- Status: {context.Response.StatusCode}");
+    Console.WriteLine("--------------------------------------------------------------------");
+});
+*/
+
 // Configure the HTTP request pipeline.
-//if (app.Environment.IsDevelopment())
-//{
-//    app.UseSwagger();
-//    app.UseSwaggerUI();
-//}
-app.UseSwagger();
-app.UseSwaggerUI();
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
 
 //app.UseHttpsRedirection();
 
-// Cho phép load file t?nh c?a Angular t? wwwroot
+// Allow loading static files of Angular from wwwroot
 app.UseStaticFiles();
-
-app.UseMiddleware<ExceptionMiddleware>();
 
 // Apply CORS
 app.UseCors("AllowAngularClient");
 
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();

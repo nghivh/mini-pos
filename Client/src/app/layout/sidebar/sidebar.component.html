@@ -78,37 +78,6 @@
 
   </ng-container>
 </nav>
-
-  <!-- <nav class="flex-1 flex flex-col gap-1 p-3 overflow-y-auto overflow-x-hidden">
-    
-    <ng-template #menuItem let-link="link" let-icon="icon" let-label="label">
-      <a [routerLink]="link" 
-         routerLinkActive="bg-blue-600 text-white shadow-lg" 
-         [routerLinkActiveOptions]="{ exact: link === '/' }"
-         (click)="layout.closeSidebar()"
-         (mouseenter)="showTooltip($event, label)" 
-         (mouseleave)="hideTooltip()"
-         class="flex items-center rounded-lg px-3 py-3 text-slate-300 hover:bg-white/10 hover:text-white transition-colors group cursor-pointer">
-        
-        <span class="text-xl min-w-[24px] text-center">{{ icon }}</span>
-
-        <span *ngIf="!layout.isSidebarCollapsed()" 
-              class="ml-3 font-medium whitespace-nowrap transition-opacity">
-          {{ label }}
-        </span>
-        
-        </a>
-    </ng-template>
-
-    <ng-container *ngTemplateOutlet="menuItem; context: {link: '/', icon: '📊', label: 'Dashboard'}"></ng-container>
-    <ng-container *ngTemplateOutlet="menuItem; context: {link: '/wh-ins', icon: '🏭', label: 'WH-In'}"></ng-container>
-    <ng-container *ngTemplateOutlet="menuItem; context: {link: '/wh-in-transfer', icon: '🏭', label: 'WH-In Transfer'}"></ng-container>
-    <ng-container *ngTemplateOutlet="menuItem; context: {link: '/wh-in-print-label', icon: '🏭', label: 'WH-In Print Label'}"></ng-container>
-    <ng-container *ngTemplateOutlet="menuItem; context: {link: '/purs', icon: '📦', label: 'Purchaser'}"></ng-container>
-    <ng-container *ngTemplateOutlet="menuItem; context: {link: '/purs-approval', icon: '🛂', label: 'Waiting Checker/Approver'}"></ng-container>
-    <ng-container *ngTemplateOutlet="menuItem; context: {link: '/wh-outs', icon: '🏭', label: 'WH-Out'}"></ng-container>
-    <ng-container *ngTemplateOutlet="menuItem; context: {link: '/wh-out-steps', icon: '🏭', label: 'WH-Out Steps'}"></ng-container>
-  </nav> -->
   
   <div class="p-4 border-t border-white/10 text-xs text-slate-500 text-center flex-shrink-0">
      <span *ngIf="!layout.isSidebarCollapsed()">v1.0.0</span>

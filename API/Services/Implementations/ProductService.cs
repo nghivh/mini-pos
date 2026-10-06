@@ -124,7 +124,7 @@ namespace API.Services.Implementations
         public async Task<ProductResponseDto> UpdateAsync(int id, ProductUpsertDto productDto, CancellationToken ct)
         {
             // 1. Lấy Entity từ DB (Tracking để AutoMapper map đè lên)
-            var product = await _unitOfWork.Repository<Product>().GetByIdAsync(ct, id);
+            var product = await _unitOfWork.Repository<Product>().GetByIdAsync(id, ct);
             if (product == null || !product.IsActive) { throw new InvalidOperationException("Sản phẩm không tồn tại hoặc đã bị vô hiệu hóa."); }
 
             // 2. Kiểm tra mã vạch nếu có thay đổi (tránh trùng với sản phẩm khác)
@@ -158,7 +158,7 @@ namespace API.Services.Implementations
 
         public async Task<bool> DeleteAsync(int id, CancellationToken ct)
         {
-            var product = await _unitOfWork.Repository<Product>().GetByIdAsync(ct, id);
+            var product = await _unitOfWork.Repository<Product>().GetByIdAsync(id, ct);
             if (product == null || !product.IsActive) { throw new InvalidOperationException("Sản phẩm không tồn tại hoặc đã bị vô hiệu hóa."); }
 
             product.IsActive = false;
