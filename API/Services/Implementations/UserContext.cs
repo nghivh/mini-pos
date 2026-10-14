@@ -1,4 +1,5 @@
-﻿using API.Services.Interfaces;
+﻿using API.Common.Security;
+using API.Services.Interfaces;
 using Microsoft.Extensions.Caching.Memory;
 using System.Net;
 
@@ -17,6 +18,10 @@ namespace API.Services.Implementations
             _httpContextAccessor = httpContextAccessor;
             _cache = cache;
         }
+
+        public int? UserId => throw new NotImplementedException();
+
+        public string? UserName => throw new NotImplementedException();
 
         public string IpAddress
         {
@@ -66,6 +71,6 @@ namespace API.Services.Implementations
                 _machineName = cachedName;
                 return _machineName;
             }
-        }
+        }       
     }
 }

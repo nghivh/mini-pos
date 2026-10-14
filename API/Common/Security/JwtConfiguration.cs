@@ -10,6 +10,7 @@ namespace API.Common.Security
         {
             // Đọc cấu hình từ appsettings.json
             services.Configure<JwtSettings>(configuration.GetSection("JwtSettings"));
+            services.Configure<RefreshTokenSettings>(configuration.GetSection("RefreshTokenSettings"));
 
             // Đăng ký helper
             services.AddSingleton<JwtTokenHelper>();
@@ -34,7 +35,8 @@ namespace API.Common.Security
                     ValidateIssuerSigningKey = true,
                     ValidIssuer = jwtSettings.Issuer,
                     ValidAudience = jwtSettings.Audience,
-                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.SecretKey))
+                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.SecretKey)),
+                    ClockSkew = TimeSpan.FromMinutes(jwtSettings.ClockSkewInMinutes)
                 };
             });
 

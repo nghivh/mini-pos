@@ -31,12 +31,21 @@
     }
 
     /// <summary>
+    /// Request đăng xuất người dùng
+    /// </summary>
+    public class LogoutRequest
+    {
+        // Chế độ cookie (UseCookie = true): có thể để trống, server đọc từ cookie.
+        public string? RefreshToken { get; set; }
+    }
+
+    /// <summary>
     /// Request làm mới token.
     /// </summary>
     public class RefreshTokenRequest
     {
-        public string? RefreshToken { get; set; }
-        public string ExpiredAccessToken { get; set; } = null!;        
+        // Chế độ cookie (UseCookie = true): có thể để trống, server đọc từ cookie.
+        public string? RefreshToken { get; set; }       
     }
 
     /// <summary>
@@ -56,9 +65,9 @@
     /// </summary>
     public class CurrentUser
     {
+        public int UserId { get; set; }
         public string Username { get; set; } = null!;
         public string Fullname { get; set; } = null!;
-        public string Section { get; set; } = null!;
         public string[] Roles { get; set; } = [];
     }
 }

@@ -9,13 +9,14 @@ namespace API.Common.Security
 {
     public class JwtTokenHelper
     {
+        public const string UserIdClaimType = "uid"; // ClaimType để lưu UserId trong Access Token
         private readonly JwtSettings _jwtSettings;
         public JwtTokenHelper(IOptions<JwtSettings> jwtOptions)
         {
             _jwtSettings = jwtOptions.Value;
         }
 
-        public string GenerateAccessToken(string username, IEnumerable<string> roles)
+        public string GenerateAccessToken(int userId, string userName, IEnumerable<string> roles)
         {
             // Tạo key bảo mật từ chuỗi SecretKey
             var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.SecretKey));
@@ -27,9 +28,10 @@ namespace API.Common.Security
             var claims = new List<Claim>
             {
                 // JwtRegisteredClaimNames: Chuẩn JWT / tương tác API, client, hệ thống khác
-                new Claim(JwtRegisteredClaimNames.Sub, username),
-                new Claim(JwtRegisteredClaimNames.UniqueName, username),
-                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+                new Claim(JwtRegisteredClaimNames.Sub, userName),
+                new Claim(JwtRegisteredClaimNames.UniqueName, userName),
+                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+                new Claim(UserIdClaimType, userId.ToString())
             };
 
             // Thêm các vai trò (roles) vào claims
@@ -39,6 +41,7 @@ namespace API.Common.Security
                 claims.Add(new Claim(ClaimTypes.Role, role));
             }
 
+            // Đóng gói đối tượng JWT (JwtSecurityToken)
             var token = new JwtSecurityToken(
                 issuer: _jwtSettings.Issuer,
                 audience: _jwtSettings.Audience,
@@ -46,14 +49,10 @@ namespace API.Common.Security
                 expires: DateTime.UtcNow.AddMinutes(_jwtSettings.ExpiryInMinutes),
                 signingCredentials: credentials
             );
-            return new JwtSecurityTokenHandler().WriteToken(token);
-        }
 
-        public static string GenerateRefreshTokenPlaintext(int size = 64) 
-        {
-            // Tạo chuỗi ngẫu nhiên làm refresh token
-            var bytes = RandomNumberGenerator.GetBytes(size);
-            return Convert.ToBase64String(bytes);
+            // Mã hóa token thành chuỗi (string) để trả về cho client
+            // Thông tin trả ra sẽ có dạng: header.payload.signature (Base64Url)
+            return new JwtSecurityTokenHandler().WriteToken(token);
         }
 
         public static string HashToken(string token)
@@ -64,6 +63,15 @@ namespace API.Common.Security
             return Convert.ToBase64String(bytes);
         }
 
+        public static string GenerateRefreshTokenPlaintext(int size = 64)
+        {
+            // Tạo chuỗi ngẫu nhiên làm refresh token
+            var bytes = RandomNumberGenerator.GetBytes(size);
+            return Convert.ToBase64String(bytes);
+        }
+
+        #region "Không dùng tới"
+        /*
         // Hàm tạo Refresh Token dạng JWT (đơn giản, chỉ chứa username)
         public string GenerateSimpleRefreshTokenJwt(string username, DateTime expiresAt)
         {
@@ -172,5 +180,7 @@ namespace API.Common.Security
                 return null;
             }
         }
+        */
+        #endregion
     }
 }

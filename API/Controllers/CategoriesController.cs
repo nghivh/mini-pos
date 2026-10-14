@@ -1,7 +1,9 @@
 ﻿using API.Models.Entities;
 using API.Services.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 using System.Threading.Tasks;
 
 namespace API.Controllers
@@ -16,9 +18,12 @@ namespace API.Controllers
             _categoryService = categoryService;
         }
 
+        [Authorize]
         [HttpGet]
         public async Task<IActionResult> Get()
         {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var userName = User.Identity?.Name;
             var categories = await _categoryService.GetAllCategoriesAsync(CancellationToken.None);
             return Ok(categories);
         }

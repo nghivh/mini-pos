@@ -1,4 +1,5 @@
-﻿using API.Data.Interfaces;
+﻿using API.Common.Helpers;
+using API.Data.Interfaces;
 using API.Models.DTOs;
 using API.Models.Entities;
 using API.Services.Interfaces;
@@ -13,11 +14,13 @@ namespace API.Services.Implementations
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly IMapper _mapper;
+        private readonly IUserContext _userContext;
 
-        public UserService(IUnitOfWork unitOfWork, IMapper mapper)
+        public UserService(IUnitOfWork unitOfWork, IMapper mapper, IUserContext userContext)
         {
             _unitOfWork = unitOfWork;
             _mapper = mapper;
+            _userContext = userContext;
         }
 
         public async Task<IEnumerable<UserDto>> GetAllUsersAsync(CancellationToken ct)
@@ -63,17 +66,30 @@ namespace API.Services.Implementations
                 throw new InvalidOperationException("User này không tồn tại.");
             }
 
-            var user = _mapper.Map<User>(userDto);
-            if(!string.IsNullOrEmpty(userDto.Password))
+            var passwordChanged = !string.IsNullOrEmpty(userDto.Password);
+            var isBeingDeactivated = existingUser.IsActive && !userDto.IsActive;
+
+            // Không dùng Mapper, mà chỉ cập nhật những trường cần thay đổi
+            existingUser.FullName = userDto.FullName;
+            existingUser.Role = userDto.Role;
+            existingUser.IsActive = userDto.IsActive;
+            existingUser.UpdatedAt = DateTime.UtcNow;
+
+            if (passwordChanged)
             {
-                user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(userDto.Password);
-            }
-            else
-            {
-                user.PasswordHash = existingUser.PasswordHash; // Giữ nguyên mật khẩu cũ nếu không có mật khẩu mới
+                existingUser.PasswordHash = BCrypt.Net.BCrypt.HashPassword(userDto.Password);
             }
 
-            _unitOfWork.Repository<User>().Update(user);
+            _unitOfWork.Repository<User>().Update(existingUser);
+
+            // Đổi mật khẩu hoặc khoá tài khoản => thu hồi toàn bộ refresh token của user đó.
+            // Nếu không, refresh token cũ vẫn dùng được (và khi mở khoá lại, token cũ sống lại).
+            if(passwordChanged || isBeingDeactivated)
+            {
+                var reason = isBeingDeactivated ? "Tài khoản bị khóa" : "Mật khẩu được đặt lại";
+                await _unitOfWork.RevokeActiveRefreshTokensAsync(existingUser.Id, _userContext.IpAddress, reason, ct);
+            }
+
             await _unitOfWork.SaveChangesAsync(ct);
         }
     }

@@ -73,7 +73,7 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
-    c.SwaggerDoc("v1", new OpenApiInfo { Title = "Mini-POS API", Version = "v1" });
+    c.SwaggerDoc("v1", new OpenApiInfo { Title = "Mini-POS API", Version = "1.0" });
     var securityScheme = new OpenApiSecurityScheme
     {
         Name = "Authorization",

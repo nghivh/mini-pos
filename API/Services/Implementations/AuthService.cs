@@ -3,6 +3,7 @@ using API.Common.Security;
 using API.Data.Interfaces;
 using API.Models.DTOs.Auth;
 using API.Models.Entities;
+using DocumentFormat.OpenXml.Presentation;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using System.Security.Claims;
@@ -13,17 +14,26 @@ namespace API.Application.Services
 {
     public class AuthService : IAuthService
     {
+        private const string InvalidRefreshTokenMessage = "Refresh token không hợp lệ hoặc đã hết hạn. Vui lòng đăng nhập lại.";
+        private const string RotatedReason = "Refresh token đã được thay thế bằng một token mới (rotate).";
+
+        // Cửa sổ ân hạn: SPA hay bắn nhiều request song song, khi access token hết hạn có thể có
+        // 2 request refresh gần như cùng lúc bằng cùng 1 token. Request thứ 2 đến sau khi token đã
+        // rotate ở request thứ 1 KHÔNG phải trộm token — chỉ từ chối nó, không revoke cả phiên.
+        private const int RotationGraceSeconds = 30;
+
         private readonly IUnitOfWork _unitOfWork;
         private readonly JwtTokenHelper _jwtTokenHelper;
         private readonly JwtSettings _jwtSettings;
         private readonly RefreshTokenSettings _refreshTokenSettings;
 
-        public AuthService(IUnitOfWork unitOfWork, JwtTokenHelper jwtTokenHelper, IOptions<JwtSettings> jwtSettings, IOptions<RefreshTokenSettings> refreshTokenSettingsOptions)
+        public AuthService(IUnitOfWork unitOfWork, JwtTokenHelper jwtTokenHelper, 
+            IOptions<JwtSettings> jwtSettings, IOptions<RefreshTokenSettings> refreshTokenSettings)
         {
             _unitOfWork = unitOfWork;
-            _jwtTokenHelper = jwtTokenHelper;
-            _refreshTokenSettings = refreshTokenSettingsOptions.Value;
+            _jwtTokenHelper = jwtTokenHelper;            
             _jwtSettings = jwtSettings.Value;
+            _refreshTokenSettings = refreshTokenSettings.Value;
         }
 
         // --------------------------------------------------------------------
@@ -38,7 +48,7 @@ namespace API.Application.Services
                 throw new UnauthorizedAccessException("Sai tên đăng nhập hoặc mật khẩu");
             }
 
-            if(!user.IsActive)
+            if (!user.IsActive)
             {
                 throw new UnauthorizedAccessException("Tài khoản đã bị khóa");
             }
@@ -51,80 +61,148 @@ namespace API.Application.Services
                 throw new UnauthorizedAccessException("Sai tên đăng nhập hoặc mật khẩu");
             }
 
-            string[] roleNames = [user.Role];
-
-            //For test mini app
-            /*
-            if (username != "admin" || password != "123456")
-            {
-                throw new UnauthorizedAccessException("User hoặc mật khẩu không đúng");
-            }
-            string[] roleNames = ["admin"];
-            */
-            //For test mini app
+            string[] roles = [user.Role];
 
             // 3️. Tạo Access Token
-            var accessToken = _jwtTokenHelper.GenerateAccessToken(username, roleNames);
+            var accessToken = _jwtTokenHelper.GenerateAccessToken(user.Id, user.UserName, roles);
             var accessExpires = DateTime.UtcNow.AddMinutes(_jwtSettings.ExpiryInMinutes);
 
-            // 4️. Tạo Refresh Token
-            var refreshExpires = DateTime.UtcNow.AddDays(_refreshTokenSettings.ExpiryDays);
-            // Hàm này sẽ tạo ra một chuỗi JWT dài có chứa username và thời hạn
-            var refreshTokenJwt = _jwtTokenHelper.GenerateSimpleRefreshTokenJwt(username, refreshExpires);
+            // 4️. Tạo Refresh Token            
+            var refreshTokenEntity = BuildRefreshToken(user.Id, ip, out string plaintextRefreshToken);
 
-            // 5️. Trả kết quả
+            // 5. Lưu Refresh Token vào CSDL
+            await _unitOfWork.Repository<RefreshToken>().AddAsync(refreshTokenEntity, ct);
+            await _unitOfWork.SaveChangesAsync(ct);
+
+            // 6. Trả kết quả
             return new AuthResponse
             {
                 AccessToken = accessToken,
                 AccessTokenExpiresAt = accessExpires,
-                RefreshToken = _refreshTokenSettings.UseCookie ? null : refreshTokenJwt,
-                RefreshTokenExpiresAt = refreshExpires
+                RefreshToken = plaintextRefreshToken, //_refreshTokenSettings.UseCookie ? null : plaintextRefreshToken,
+                RefreshTokenExpiresAt = refreshTokenEntity.ExpiresAt
             };
         }
 
         // --------------------------------------------------------------------
-        // 🔹 REFRESH TOKEN
+        // 🔹 REFRESH TOKEN - xoay vòng (rotate) token + phát hiện token bị dùng lại (reuse detection)
         // --------------------------------------------------------------------
-        public async Task<AuthResponse> RefreshAsync(string refreshToken, string expiredAccessToken)
+        public async Task<AuthResponse> RefreshAsync(string refreshToken, string ip, CancellationToken ct)
         {
-            // 1. Validate Refresh Token
-            // Hàm này kiểm tra chữ ký và hạn sử dụng (Expire)
-            var refreshPrincipal = _jwtTokenHelper.ValidateRefreshToken(refreshToken);
+            var now = DateTime.UtcNow;
 
-            if (refreshPrincipal is null)
-                throw new UnauthorizedAccessException("Refresh token không hợp lệ hoặc đã hết hạn. Vui lòng đăng nhập lại.");
+            // 1. Hash token nhận được từ client để tìm trong DB
+            var hashedToken = JwtTokenHelper.HashToken(refreshToken);
+            var refreshTokenExisting = await _unitOfWork.Repository<RefreshToken>().Query()
+                .FirstOrDefaultAsync(rt => rt.TokenHash == hashedToken, ct);
 
-            // Lấy username từ Refresh Token
-            var username = refreshPrincipal.FindFirst(ClaimTypes.NameIdentifier)?.Value
-                           ?? refreshPrincipal.FindFirst("sub")?.Value;
-
-            if (string.IsNullOrEmpty(username))
-                throw new UnauthorizedAccessException("Token lỗi.");
-
-            // 2. Lấy Roles từ Access Token Cũ
-            var accessPrincipal = _jwtTokenHelper.GetPrincipalFromExpiredToken(expiredAccessToken);
-            var oldRoles = accessPrincipal?.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList()
-                           ?? accessPrincipal?.FindAll("role").Select(c => c.Value).ToList();
-
-            if (oldRoles == null) oldRoles = new List<string>();
-
-            // 3. Cấp Token Mới
-            var newAccessToken = _jwtTokenHelper.GenerateAccessToken(username, oldRoles);
-            var newAccessExpires = DateTime.UtcNow.AddMinutes(_jwtSettings.ExpiryInMinutes);
-
-            // Xoay vòng Refresh Token (Tạo cái mới tiếp)
-            var newRefreshExpires = DateTime.UtcNow.AddDays(_refreshTokenSettings.ExpiryDays);
-            var newRefreshToken = _jwtTokenHelper.GenerateSimpleRefreshTokenJwt(username, newRefreshExpires);
-
-            var response = new AuthResponse
+            if (refreshTokenExisting is null || refreshTokenExisting.ExpiresAt <= now)
             {
-                AccessToken = newAccessToken,
-                AccessTokenExpiresAt = newAccessExpires,
-                RefreshToken = _refreshTokenSettings.UseCookie ? null : newRefreshToken,
-                RefreshTokenExpiresAt = newRefreshExpires
-            };
+                // Nếu token không tồn tại hoặc đã hết hạn, trả về lỗi
+                throw new UnauthorizedAccessException(InvalidRefreshTokenMessage);
+            }
 
-            return await Task.FromResult(response);
+            // 2. Xử lý trường hợp Token đã bị Revoke (Kiểm tra reuse detection)
+            if (refreshTokenExisting.RevokedAt is not null)
+            {
+                // Kiểm tra xem token này trước đó bị thu hồi có phải do xoay vòng (rotate) hay không.
+                // (Nếu token bị revoke vì lý do khác như đăng xuất thì không phải dấu hiệu bị đánh cắp).
+                var wasRotated = refreshTokenExisting.ReasonRevoked == RotatedReason;
+
+                // "Tranh chấp lành tính" (Benign Race Condition): Token vừa mới bị rotate cách đây vài giây
+                // (trong khoảng thời gian grace period), thường do client bị chậm mạng gửi đúp 2 request cùng lúc.
+                var isBenignRace =
+                    wasRotated &&
+                    refreshTokenExisting.RevokedAt.Value > now.AddSeconds(-RotationGraceSeconds);
+
+                // Nếu token bị rotate từ trước, nhưng đã quá thời gian ân hạn mà vẫn có request gửi lên -> Nghi ngờ bị đánh cắp!
+                // Tiến hành vô hiệu hóa toàn bộ token của user này để bảo vệ tài khoản.
+                if (wasRotated && !isBenignRace)
+                {
+                    await RevokeAllActiveTokensAsync(
+                        refreshTokenExisting.UserId, ip, "Phát hiện dùng lại refresh token đã rotate (nghi ngờ bị đánh cắp)", ct);
+                }
+
+                // Dù là lỗi mạng lành tính hay kẻ tấn công thực sự, token cũ này đều không được cấp lại Access Token mới.
+                throw new UnauthorizedAccessException(InvalidRefreshTokenMessage);
+            }
+
+            // 3. Kiểm tra thông tin User (tồn tại và trạng thái kích hoạt)
+            var user = await _unitOfWork.Repository<User>().Query().FirstOrDefaultAsync(u => u.Id == refreshTokenExisting.UserId, ct);
+            if (user == null || !user.IsActive)
+            {
+                throw new UnauthorizedAccessException("Tài khoản không tồn tại hoặc đã bị khóa");
+            }
+
+            // 4. ROTATE TOKEN: Build token mới, update token cũ
+            var newRefreshTokenEntity = BuildRefreshToken(user.Id, ip, out string plaintextNewRefreshToken);
+
+            refreshTokenExisting.RevokedAt = now;
+            refreshTokenExisting.RevokedByIp = ip;
+            refreshTokenExisting.ReasonRevoked = RotatedReason;
+
+            _unitOfWork.Repository<RefreshToken>().Update(refreshTokenExisting);
+            await _unitOfWork.Repository<RefreshToken>().AddAsync(newRefreshTokenEntity, ct);
+
+            // Lưu lần 1 để sinh ID cho newRefreshTokenEntity
+            await _unitOfWork.SaveChangesAsync(ct);
+
+            // Cập nhật liên kết truy vết chuỗi token (ReplacedByTokenId)
+            refreshTokenExisting.ReplacedByTokenId = newRefreshTokenEntity.Id;
+
+            _unitOfWork.Repository<RefreshToken>().Update(refreshTokenExisting);
+            await _unitOfWork.SaveChangesAsync(ct);
+
+            // 5. Sinh Access Token mới và trả về response
+            string[] roles = [user.Role];
+            var accessToken = _jwtTokenHelper.GenerateAccessToken(user.Id, user.UserName, roles);
+            var accessExpires = DateTime.UtcNow.AddMinutes(_jwtSettings.ExpiryInMinutes);
+
+            return new AuthResponse
+            {
+                AccessToken = accessToken,
+                AccessTokenExpiresAt = accessExpires,
+                RefreshToken = plaintextNewRefreshToken, //_refreshTokenSettings.UseCookie ? null : plaintextNewRefreshToken,
+                RefreshTokenExpiresAt = newRefreshTokenEntity.ExpiresAt
+            };
+        }
+
+        // --------------------------------------------------------------------
+        // 🔹 LOGOUT — revoke đúng refresh token của phiên hiện tại (thiết bị khác không bị ảnh hưởng)
+        // --------------------------------------------------------------------
+        public async Task LogoutAsync(string refreshToken, string ip, CancellationToken ct)
+        {
+            if (string.IsNullOrWhiteSpace(refreshToken)) return;
+
+            var hashedToken = JwtTokenHelper.HashToken(refreshToken);
+            var refreshTokenExisting = await _unitOfWork.Repository<RefreshToken>().Query()
+                .FirstOrDefaultAsync(rt => rt.TokenHash == hashedToken, ct);
+            if (refreshTokenExisting == null || refreshTokenExisting.RevokedAt != null)
+            {
+                // Token không tồn tại hoặc đã bị revoke → không làm gì cả (idempotent)
+                return;
+            }
+            // Revoke token hiện tại
+            refreshTokenExisting.RevokedAt = DateTime.UtcNow;
+            refreshTokenExisting.RevokedByIp = ip;
+            refreshTokenExisting.ReasonRevoked = "Người dùng logout";
+            _unitOfWork.Repository<RefreshToken>().Update(refreshTokenExisting);
+            await _unitOfWork.SaveChangesAsync(ct);
+        }
+
+        // --------------------------------------------------------------------
+        // 🔹 LOGOUT ALL — thu hồi toàn bộ refresh token đang hoạt động của user (mọi thiết bị)
+        // --------------------------------------------------------------------
+        public async Task LogoutAllAsync(string username, string ip, CancellationToken ct)
+        {
+            var user = await _unitOfWork.Repository<User>().Query().FirstOrDefaultAsync(u => u.UserName == username, ct);
+
+            if(user is null)
+            {
+                return;
+            }
+
+            await RevokeAllActiveTokensAsync(user.Id, ip, "Người dùng logout khỏi mọi thiết bị", ct);
         }
 
         // --------------------------------------------------------------------
@@ -142,26 +220,45 @@ namespace API.Application.Services
 
             return new CurrentUser
             {
+                UserId = user.Id,
                 Username = user.UserName,
                 Fullname = user.FullName,
-                Section = "",
                 Roles = [user.Role]
             };
         }
 
-        private string ComputeHash(string text)
+        // --------------------------------------------------------------------
+        // 🔹 HELPERS
+        // --------------------------------------------------------------------
+        private RefreshToken BuildRefreshToken(int userId, string ip, out string plaintextToken)
         {
-            using (MD5 md5 = MD5.Create())
-            {
-                byte[] hash = md5.ComputeHash(Encoding.UTF8.GetBytes(text));
-                StringBuilder stringBuilder = new StringBuilder();
-                for (int i = 0; i < hash.Length; i++)
-                {
-                    stringBuilder.Append(hash[i].ToString("x2"));
-                }
+            plaintextToken = JwtTokenHelper.GenerateRefreshTokenPlaintext();
 
-                return stringBuilder.ToString();
+            return new RefreshToken
+            {
+                UserId = userId,
+                TokenHash = JwtTokenHelper.HashToken(plaintextToken), // Lưu Hash của Refresh Token vào DB
+                ExpiresAt = DateTime.UtcNow.AddDays(_refreshTokenSettings.ExpiryDays),
+                CreatedAt = DateTime.UtcNow,
+                CreatedByIp = ip
+            };
+        }
+
+        private async Task RevokeAllActiveTokensAsync(int userId, string ip, string reason, CancellationToken ct)
+        {
+            var activeTokens = await _unitOfWork.Repository<RefreshToken>().Query()
+                .Where(rt => rt.UserId == userId && rt.RevokedAt == null && rt.ExpiresAt > DateTime.UtcNow)
+                .ToListAsync(ct);
+            foreach (var token in activeTokens)
+            {
+                token.RevokedAt = DateTime.UtcNow;
+                token.RevokedByIp = ip;
+                token.ReasonRevoked = reason;
+
+                _unitOfWork.Repository<RefreshToken>().Update(token);
             }
-        }        
+            await _unitOfWork.SaveChangesAsync(ct);
+        }
+        
     }
 }

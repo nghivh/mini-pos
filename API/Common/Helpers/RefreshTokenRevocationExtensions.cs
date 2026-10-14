@@ -1,0 +1,32 @@
+﻿using API.Data.Interfaces;
+using API.Models.Entities;
+using Microsoft.EntityFrameworkCore;
+
+namespace API.Common.Helpers
+{
+    public static class RefreshTokenRevocationExtensions
+    {
+        /// <summary>
+        /// Đánh dấu thu hồi mọi refresh token còn hiệu lực của 1 user.
+        /// KHÔNG gọi SaveChanges: để nơi gọi gộp chung 1 lần lưu với thay đổi khác
+        /// (ví dụ đổi mật khẩu / khoá tài khoản) — cùng thành công hoặc cùng thất bại.
+        /// </summary>
+        public static async Task RevokeActiveRefreshTokensAsync(
+            this IUnitOfWork unitOfWork, int userId, string? ipAddress, string reason, CancellationToken ct)
+        {
+            var now = DateTime.UtcNow;
+            var activeRefreshTokens = await unitOfWork.Repository<RefreshToken>().Query()
+                .Where(rt => rt.UserId == userId && rt.RevokedAt == null && rt.ExpiresAt > now)
+                .ToListAsync(ct);
+
+            foreach (var token in activeRefreshTokens)
+            {
+                token.RevokedAt = now;
+                token.RevokedByIp = ipAddress;
+                token.ReasonRevoked = reason;
+
+                unitOfWork.Repository<RefreshToken>().Update(token);
+            }
+        }
+    }
+}
