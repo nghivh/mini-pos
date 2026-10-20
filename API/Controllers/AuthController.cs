@@ -1,9 +1,11 @@
 ﻿using API.Application.Interfaces;
 using API.Common.Security;
 using API.Models.DTOs.Auth;
+using API.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
+using System.Runtime.InteropServices;
 using System.Security.Claims;
 
 namespace API.Controllers
@@ -13,11 +15,13 @@ namespace API.Controllers
     public class AuthController : ControllerBase
     {
         private readonly IAuthService _authService;
+        private readonly IUserContext _userContext;
         private readonly RefreshTokenSettings _refreshTokenSettings;
 
-        public AuthController(IAuthService authService, IOptions<RefreshTokenSettings> refreshTokenSettings)
+        public AuthController(IAuthService authService, IUserContext userContext, IOptions<RefreshTokenSettings> refreshTokenSettings)
         {
             _authService = authService;
+            _userContext = userContext;
             _refreshTokenSettings = refreshTokenSettings.Value;
         }
 
@@ -26,8 +30,8 @@ namespace API.Controllers
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginRequest rq, CancellationToken ct)
         {
-            var ip = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-            var device = Request.Headers["User-Agent"].ToString();
+            var ip = _userContext.IpAddress;
+            var device = _userContext.Device;
 
             var result = await _authService.LoginAsync(rq.Username, rq.Password, device, ip, ct);
 
@@ -46,8 +50,8 @@ namespace API.Controllers
         [HttpPost("refresh")]
         public async Task<IActionResult> Refresh([FromBody] RefreshTokenRequest rq, CancellationToken ct)
         {
-            var ip = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-            var device = Request.Headers["User-Agent"].ToString();
+            var ip = _userContext.IpAddress;
+            var device = _userContext.Device;
 
             // Lấy plaintext từ cookie hoặc body (tùy config)
             var tokenPlain = _refreshTokenSettings.UseCookie ? Request.Cookies[_refreshTokenSettings.CookieName] : rq.RefreshToken;
@@ -74,7 +78,7 @@ namespace API.Controllers
         [HttpPost("logout")]
         public async Task<IActionResult> Logout([FromBody] LogoutRequest rq)
         {
-            var ip = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+            var ip = _userContext.IpAddress;
 
             // Lấy plaintext từ cookie hoặc body (tùy config)
             var tokenPlain = _refreshTokenSettings.UseCookie ? Request.Cookies[_refreshTokenSettings.CookieName] : rq.RefreshToken;
@@ -98,10 +102,10 @@ namespace API.Controllers
         [HttpPost("logout-all")]
         public async Task<IActionResult> LogoutAll()
         {
-            var username = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
-            var ip = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+            var ip = _userContext.IpAddress;
+            var username = _userContext.UserName;
 
-            if(string.IsNullOrWhiteSpace(username))
+            if (string.IsNullOrWhiteSpace(username))
             {
                 return Unauthorized();
             }
@@ -121,7 +125,7 @@ namespace API.Controllers
         [HttpGet("me")]
         public async Task<IActionResult> Me()
         {
-            var username = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
+            var username = _userContext.UserName;
 
             var currentUser = await _authService.CurrentUserAsync(username);
 

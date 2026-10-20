@@ -6,5 +6,6 @@
         string? UserName { get; }
         string IpAddress { get; }
         string MachineName { get; }
+        string Device { get; }
     }
 }
